@@ -13,37 +13,33 @@ lampposts, chai stalls, hoardings) all come from there. It's a deliberate
 middle step: good enough that strangers see a game rather than a diagram,
 cheap enough that nothing is lost when a real sprite sheet replaces it.
 
-## Sharing it
+## It's live
 
-It's a static site — no server, no database — so any static host works and
-the free tiers are more than enough.
+**https://praveendriver.github.io/auto/**
 
-```bash
-npm run build          # → dist/
-```
-
-**Fastest:** go to https://app.netlify.com/drop and drag the `dist` folder
-onto the page. You get an https URL immediately. Sign in (free) to keep it
-permanently and give it a name like `auto-game.netlify.app`.
-
-**Repeatable:** once you have a Netlify account,
+Hosted on GitHub Pages from https://github.com/praveendriver/auto — free, no
+card, no expiry. Every push to `main` rebuilds and redeploys automatically
+via `.github/workflows/deploy.yml`; nothing to run by hand.
 
 ```bash
-npx netlify-cli deploy --prod --dir=dist
+git add -A && git commit -m "..." && git push    # that's the deploy
 ```
 
-logs you in the first time and redeploys the same URL every time after.
-Vercel (`npx vercel --prod`) and Cloudflare Pages work the same way.
+Watch it with `gh run watch`. The build takes about a minute.
 
-Rebuild before every deploy — `dist/` is a snapshot, not a live link to the
-source.
+Pages serves a project site from `/auto/`, so `vite.config.ts` sets
+`base: '/auto/'`. Any host that serves from the root wants
+`BASE_PATH=/ npm run build` instead.
+
+**Want a cleaner URL for testers?** `auto-game.netlify.app` reads better than
+`praveendriver.github.io/auto` when you're sending it cold. One login, then
+`npx netlify-cli deploy --prod --dir=dist`. A custom domain (~₹800/year)
+points at GitHub Pages just as easily.
 
 **What testers get:** a start screen, then the game. On Android, Chrome's
-"Add to Home screen" gives it an icon and opens it full-screen like an app
-(iOS will use a plain screenshot as the icon — a PNG icon fixes that later).
-The crash screen has a *send my stats* link that opens WhatsApp with their
-lifetime numbers — runs, minutes, best fare, pickups, drops, device — so you
-get data without running a server.
+"Add to Home screen" gives it an icon and opens full-screen like an app. The
+crash screen has a *send my stats* link that opens WhatsApp with their
+lifetime numbers.
 
 ## Analytics
 
@@ -54,12 +50,15 @@ key set it's a silent no-op, so nothing changes until you want it to.
 
 1. Free account at https://app.posthog.com → create a project → copy the
    *Project API key* from Project settings.
-2. Put it in `.env` as `VITE_POSTHOG_KEY=phc_…` (the file is gitignored).
+2. Add it as a repo secret so the deploy picks it up:
+   `gh secret set VITE_POSTHOG_KEY --repo praveendriver/auto --body phc_…`
+   (For local runs, also put it in `.env` — that file is gitignored.)
 3. Project settings → **turn on "Discard client IP data"**. City, region and
    country are derived from the IP at ingest and kept; the IP itself is not.
    That's the line between usage analytics and personal data under the DPDP
    Act, and it's what you'll declare in the Play Store's Data Safety form.
-4. `npm run build` — the key is baked in at build time — then deploy.
+4. Push anything (or `gh workflow run deploy`) — the key is baked in at
+   build time, so it only takes effect on the next deploy.
 
 **What you get, without writing anything:** device model, OS, browser, screen
 size, city/region/country, session length, and *Retention* as a built-in
