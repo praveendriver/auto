@@ -59,7 +59,7 @@ export function recordRun(run: RunStats): Lifetime {
 export function summary(s: Lifetime): string {
   const mins = Math.round(s.seconds / 60);
   return [
-    '🛺 Auto — my stats',
+    '🛺 Riksha — my stats',
     `${s.runs} runs · ${mins} min played · since ${s.firstPlayed}`,
     `best ₹${s.bestFare} · ₹${s.totalFare} total`,
     `${s.carried} picked up · ${s.dropped} dropped · ${s.missions} missions · ${s.routesDone} roads finished`,

@@ -8,7 +8,14 @@
  * in the meantime.
  */
 
-/** Pixel face. Titles, HUD, numbers, buttons — anything that should read as UI. */
+/**
+ * The wordmark, and nothing else. Honk is a COLRv1 chromatic display face: it
+ * paints its own colours, so a `color` set alongside it has no effect. Its
+ * MORF axis defaults to 15, which is the instance we want.
+ */
+export const DISPLAY = '"Honk", "Geist Pixel", ui-monospace, monospace';
+
+/** Pixel face. HUD, numbers, buttons — anything that should read as UI. */
 export const PIXEL = '"Geist Pixel", ui-monospace, monospace';
 
 /** Humanist sans. Sentences people actually read. */
@@ -26,6 +33,7 @@ export async function readyFonts(): Promise<void> {
   // latin-ext, so without asking for it that file stays unloaded and the
   // rupee sign — which is on every screen — silently falls back.
   const wanted: [string, string][] = [
+    ['400 40px "Honk"', 'RIKSHA'],
     ['400 16px "Geist Pixel"', 'A₹←→'],
     ['400 16px "DM Sans"', 'A₹'],
     ['700 16px "DM Sans"', 'A₹'],

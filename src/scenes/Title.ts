@@ -4,7 +4,7 @@ import { buildTextures, SCENERY } from '../art';
 import { sfx } from '../audio';
 import { readStats } from '../stats';
 import { pickRoute } from '../routes';
-import { PIXEL, SANS } from '../fonts';
+import { DISPLAY, PIXEL, SANS } from '../fonts';
 import { track, setSuper } from '../analytics';
 
 /**
@@ -38,8 +38,10 @@ export class Title extends Phaser.Scene {
 
     /* ---------------------------------------------------------- title */
 
+    // No colour or stroke: Honk is chromatic and paints itself, and a stroke
+    // would fight the glyph's own outlines rather than sit behind them.
     this.add
-      .text(W / 2, 58, 'AUTO', { ...pixel, fontSize: '54px', color: '#f5c518', stroke: '#000000', strokeThickness: 7 })
+      .text(W / 2, 58, 'RIKSHA', { fontFamily: DISPLAY, fontSize: '50px' })
       .setOrigin(0.5);
     this.add
       .text(W / 2, 96, 'how many can you fit?', { ...pixel, fontSize: '13px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })

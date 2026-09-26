@@ -86,7 +86,7 @@ export class Over extends Phaser.Scene {
     });
 
     const shareText = [
-      `🛺 Auto · ${stats.route.title}, ${stats.route.city} · ₹${fare} fare`,
+      `🛺 Riksha · ${stats.route.title}, ${stats.route.city} · ₹${fare} fare`,
       `${km} km · ${stats.maxAboard} in a 3-seater · ${stats.dropped} dropped · ${stats.cowsDodged} cows`,
       `How many can you fit?`,
     ].join('\n');

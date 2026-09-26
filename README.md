@@ -1,4 +1,4 @@
-# Auto
+# Riksha
 
 Top-down vertical-scrolling auto-rickshaw runner. Swipe to change lane, hold to
 brake, pick up passengers from the kerb. **The whole game is: how many can you
@@ -197,10 +197,17 @@ and is not share-alike. That's the whole obligation.
 
 ## Typography
 
-Two faces, self-hosted in `public/fonts/` (92 KB total, latin + latin-ext):
+Three faces, self-hosted in `public/fonts/` (~120 KB, latin + latin-ext):
 
-- **Geist Pixel** — titles, HUD, numbers, buttons. A true pixel face, so it
-  belongs next to the pixel art. Never faux-bolded; that breaks the grid.
+- **Honk** — the wordmark, and nothing else. A COLRv1 *chromatic* font: it
+  paints its own colours, so any `color` set alongside it is ignored, and a
+  stroke fights the glyph's own outlines rather than sitting behind them.
+  Both are therefore omitted. Its `MORF` axis defaults to 15, which is the
+  instance we want — lucky, because `ctx.font` is a shorthand with no slot for
+  `font-variation-settings`, so canvas couldn't apply a different one anyway.
+
+- **Geist Pixel** — HUD, numbers, buttons. A true pixel face, so it belongs
+  next to the pixel art. Never faux-bolded; that breaks the grid.
 - **DM Sans** — instruction prose and anything that's a sentence.
 
 Both are declared in `index.html` and named in one place,
