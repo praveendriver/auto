@@ -1,11 +1,17 @@
 import Phaser from 'phaser';
 import { W, H } from './config';
 import { initAnalytics } from './analytics';
+import { readyFonts } from './fonts';
 import { Title } from './scenes/Title';
 import { Game } from './scenes/Game';
 import { Over } from './scenes/Over';
 
 initAnalytics();
+
+// Phaser bakes text into the canvas when it's created, so a font that lands
+// late is never picked up. Wait for both faces (with a 2s ceiling) and only
+// then boot.
+await readyFonts();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

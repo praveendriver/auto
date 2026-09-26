@@ -4,6 +4,7 @@ import { buildTextures, SCENERY } from '../art';
 import { sfx } from '../audio';
 import { readStats } from '../stats';
 import { pickRoute } from '../routes';
+import { PIXEL, SANS } from '../fonts';
 import { track, setSuper } from '../analytics';
 
 /**
@@ -33,15 +34,15 @@ export class Title extends Phaser.Scene {
 
     this.drawBackdrop();
 
-    const mono = { fontFamily: 'monospace', color: '#ffffff', fontStyle: 'bold' };
+    const pixel = { fontFamily: PIXEL, color: '#ffffff' };
 
     /* ---------------------------------------------------------- title */
 
     this.add
-      .text(W / 2, 58, 'AUTO', { ...mono, fontSize: '54px', color: '#f5c518', stroke: '#000000', strokeThickness: 7 })
+      .text(W / 2, 58, 'AUTO', { ...pixel, fontSize: '54px', color: '#f5c518', stroke: '#000000', strokeThickness: 7 })
       .setOrigin(0.5);
     this.add
-      .text(W / 2, 96, 'how many can you fit?', { ...mono, fontSize: '13px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })
+      .text(W / 2, 96, 'how many can you fit?', { ...pixel, fontSize: '13px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })
       .setOrigin(0.5);
 
     /* ------------------------------------------------- the hero sprite */
@@ -66,19 +67,19 @@ export class Title extends Phaser.Scene {
     badge.add(this.add.rectangle(0, 0, 250, 40, 0x000000, 0.55).setStrokeStyle(1, 0xf5c518, 0.5));
     badge.add(
       this.add
-        .text(0, -8, `${route.title.toUpperCase()} · ${route.city.toUpperCase()}`, { ...mono, fontSize: '12px', color: '#f5c518' })
+        .text(0, -8, `${route.title.toUpperCase()} · ${route.city.toUpperCase()}`, { ...pixel, fontSize: '12px', color: '#f5c518' })
         .setOrigin(0.5),
     );
     badge.add(
       this.add
-        .text(0, 8, `${(route.lengthM / 1000).toFixed(2)} km of real road`, { ...mono, fontSize: '10px', color: '#9a9a9a' })
+        .text(0, 8, `${(route.lengthM / 1000).toFixed(2)} km of real road`, { ...pixel, fontSize: '10px', color: '#9a9a9a' })
         .setOrigin(0.5),
     );
 
     /* --------------------------------------------------- how to play */
 
     this.add
-      .text(W / 2, 292, 'HOW TO PLAY', { ...mono, fontSize: '11px', color: '#9a9a9a' })
+      .text(W / 2, 292, 'HOW TO PLAY', { ...pixel, fontSize: '11px', color: '#9a9a9a' })
       .setOrigin(0.5);
 
     this.step(322, 'swipe', 'Swipe ← → to change lane.\nHold anywhere to brake.');
@@ -91,14 +92,14 @@ export class Title extends Phaser.Scene {
     const btn = this.add.container(W / 2, 570);
     const plate = this.add.rectangle(0, 0, 210, 44, 0xf5c518).setStrokeStyle(3, 0x000000, 0.85);
     btn.add(plate);
-    btn.add(this.add.text(0, 0, 'TAP TO DRIVE', { ...mono, fontSize: '18px', color: '#1c1c1e' }).setOrigin(0.5));
+    btn.add(this.add.text(0, 0, 'TAP TO DRIVE', { ...pixel, fontSize: '18px', color: '#1c1c1e' }).setOrigin(0.5));
     this.tweens.add({ targets: btn, scale: 1.045, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     const footer = stats.runs > 0
       ? `best ₹${stats.bestFare}  ·  ${stats.runs} run${stats.runs === 1 ? '' : 's'}`
       : 'roads © OpenStreetMap contributors';
     this.add
-      .text(W / 2, H - 16, footer, { ...mono, fontSize: '10px', color: '#6f6f6f' })
+      .text(W / 2, H - 16, footer, { ...pixel, fontSize: '10px', color: '#6f6f6f' })
       .setOrigin(0.5);
 
     /* ---------------------------------------------------------- input */
@@ -117,15 +118,15 @@ export class Title extends Phaser.Scene {
    * text on the right, on a panel so it stays readable over the scenery.
    */
   private step(y: number, icon: string, text: string) {
-    const mono = { fontFamily: 'monospace', fontStyle: 'bold' };
+    const pixel = { fontFamily: PIXEL };
     this.add.rectangle(W / 2, y, 300, 50, 0x000000, 0.5).setStrokeStyle(1, 0xffffff, 0.08);
 
     if (icon === 'swipe') {
       // No sprite for a gesture, so draw one: an auto between two arrows.
       const g = this.add.container(70, y);
       g.add(this.add.image(0, 0, 'auto').setScale(0.62));
-      const left = this.add.text(-24, 0, '←', { ...mono, fontSize: '17px', color: '#f5c518' }).setOrigin(0.5);
-      const right = this.add.text(24, 0, '→', { ...mono, fontSize: '17px', color: '#f5c518' }).setOrigin(0.5);
+      const left = this.add.text(-24, 0, '←', { ...pixel, fontSize: '17px', color: '#f5c518' }).setOrigin(0.5);
+      const right = this.add.text(24, 0, '→', { ...pixel, fontSize: '17px', color: '#f5c518' }).setOrigin(0.5);
       g.add([left, right]);
       this.tweens.add({ targets: [left, right], alpha: 0.25, duration: 620, yoyo: true, repeat: -1 });
     } else {
@@ -139,7 +140,7 @@ export class Title extends Phaser.Scene {
     }
 
     this.add
-      .text(102, y, text, { ...mono, fontSize: '11px', color: '#e9e6dc', lineSpacing: 4 })
+      .text(102, y, text, { fontFamily: SANS, fontSize: '12px', color: '#e9e6dc', lineSpacing: 5 })
       .setOrigin(0, 0.5);
   }
 

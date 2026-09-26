@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { W, H } from '../config';
 import type { RunStats } from './Game';
 import { recordRun, summary } from '../stats';
+import { PIXEL } from '../fonts';
 import { track, setSuper } from '../analytics';
 
 const BEST_KEY = 'auto_best_fare';
@@ -31,7 +32,7 @@ export class Over extends Phaser.Scene {
 
     this.add.rectangle(W / 2, H / 2, W, H, 0x111111, 0.92);
 
-    const mono = { fontFamily: 'monospace', color: '#ffffff', fontStyle: 'bold' };
+    const mono = { fontFamily: PIXEL, color: '#ffffff', fontStyle: 'bold' };
 
     this.add.text(W / 2, 110, 'RUN OVER', { ...mono, fontSize: '22px', color: '#e74c3c' }).setOrigin(0.5);
     const rt = stats.route;
@@ -133,7 +134,7 @@ export class Over extends Phaser.Scene {
   private button(x: number, y: number, label: string, fill: number, color: string) {
     const bg = this.add.rectangle(0, 0, 160, 44, fill);
     const text = this.add
-      .text(0, 0, label, { fontFamily: 'monospace', fontSize: '16px', color, fontStyle: 'bold' })
+      .text(0, 0, label, { fontFamily: PIXEL, fontSize: '16px', color, fontStyle: 'bold' })
       .setOrigin(0.5);
     const c = this.add.container(x, y, [bg, text]);
     c.setSize(160, 44).setInteractive({ useHandCursor: true });

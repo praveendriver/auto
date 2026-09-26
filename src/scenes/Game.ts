@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import * as C from '../config';
 import { Controls, type SwipeDir } from '../input';
 import { sfx } from '../audio';
+import { PIXEL } from '../fonts';
 import { pickRoute, swayAt, type Route } from '../routes';
 import { buildTextures, SCENERY } from '../art';
 import { track } from '../analytics';
@@ -327,7 +328,7 @@ export class Game extends Phaser.Scene {
   private drawAuto() {
     const body = this.add.image(0, 0, 'auto');
     this.autoPaxText = this.add
-      .text(0, 23, '0', { fontFamily: 'monospace', fontSize: '10px', color: '#f5c518', fontStyle: 'bold' })
+      .text(0, 23, '0', { fontFamily: PIXEL, fontSize: '10px', color: '#f5c518', fontStyle: 'bold' })
       .setOrigin(0.5);
 
     // Six heads in a 2×3 grid on the canopy. Hidden until someone's aboard;
@@ -341,7 +342,7 @@ export class Game extends Phaser.Scene {
       const y = -4 + row * 10;
       const dot = this.add.circle(x, y, 4, 0xf5cba7).setStrokeStyle(1, 0x1c1c1e, 0.8).setVisible(false);
       const mark = this.add
-        .text(x, y - 11, '!!', { fontFamily: 'monospace', fontSize: '9px', color: '#e74c3c', fontStyle: 'bold', stroke: '#000', strokeThickness: 2 })
+        .text(x, y - 11, '!!', { fontFamily: PIXEL, fontSize: '9px', color: '#e74c3c', fontStyle: 'bold', stroke: '#000', strokeThickness: 2 })
         .setOrigin(0.5)
         .setVisible(false);
       this.heads.push({ dot, mark });
@@ -354,21 +355,25 @@ export class Game extends Phaser.Scene {
 
 
   private drawHud() {
-    const style = { fontFamily: 'monospace', fontSize: '18px', color: '#ffffff', fontStyle: 'bold' };
+    const style = { fontFamily: PIXEL, fontSize: '18px', color: '#ffffff', fontStyle: 'bold' };
     // Translucent bars so the HUD reads over scenery.
     this.add.rectangle(C.W / 2, 27, C.W, 54, 0x000000, 0.42).setDepth(19).setScrollFactor(0);
     this.add.rectangle(C.W / 2, C.H - 30, C.W, 60, 0x000000, 0.42).setDepth(19).setScrollFactor(0);
     this.hudFare = this.add.text(12, 10, '₹0', style).setDepth(20).setScrollFactor(0);
-    this.hudDist = this.add.text(C.W - 12, 10, '0.00 km', style).setOrigin(1, 0).setDepth(20).setScrollFactor(0);
+    this.hudDist = this.add
+      .text(C.W - 12, 12, '0.00 km', { ...style, fontSize: '15px' })
+      .setOrigin(1, 0)
+      .setDepth(20)
+      .setScrollFactor(0);
     this.hudMissions = this.add
-      .text(C.W - 12, 32, '', { ...style, fontSize: '10px', color: '#f1c40f' })
+      .text(C.W - 12, 34, '', { ...style, fontSize: '9px', color: '#f1c40f' })
       .setOrigin(1, 0)
       .setDepth(20)
       .setScrollFactor(0);
 
     // Route header: which real road, how far along.
     this.hudRoute = this.add
-      .text(12, 32, '', { ...style, fontSize: '10px', color: '#bdbdbd' })
+      .text(12, 34, '', { ...style, fontSize: '9px', color: '#bdbdbd' })
       .setDepth(20)
       .setScrollFactor(0);
 
@@ -399,12 +404,12 @@ export class Game extends Phaser.Scene {
       const y = C.H - 22;
       const bg = this.add.rectangle(x, y, slotW, 30, 0x2a2a2a).setStrokeStyle(1, 0x000000, 0.6).setDepth(20).setScrollFactor(0);
       const dest = this.add
-        .text(x, y - 7, '', { fontFamily: 'monospace', fontSize: '8px', color: '#111', fontStyle: 'bold' })
+        .text(x, y - 7, '', { fontFamily: PIXEL, fontSize: '8px', color: '#111', fontStyle: 'bold' })
         .setOrigin(0.5)
         .setDepth(21)
         .setScrollFactor(0);
       const face = this.add
-        .text(x, y + 7, '', { fontFamily: 'monospace', fontSize: '11px', color: '#111', fontStyle: 'bold' })
+        .text(x, y + 7, '', { fontFamily: PIXEL, fontSize: '11px', color: '#111', fontStyle: 'bold' })
         .setOrigin(0.5)
         .setDepth(21)
         .setScrollFactor(0);
@@ -412,25 +417,25 @@ export class Game extends Phaser.Scene {
     }
 
     this.muteBtn = this.add
-      .text(C.W / 2 - 34, 12, sfx.muted ? 'SOUND OFF' : 'SOUND ON', { ...style, fontSize: '10px', color: '#7f8c8d' })
+      .text(C.W / 2 - 26, 32, sfx.muted ? 'SFX OFF' : 'SFX ON', { ...style, fontSize: '9px', color: '#7f8c8d' })
       .setOrigin(0.5, 0)
       .setDepth(20)
       .setScrollFactor(0)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -8, 70, 28), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
     this.muteBtn.on('pointerdown', (p: Phaser.Input.Pointer) => {
       p.event.stopPropagation();
       sfx.unlock();
       const muted = sfx.toggleMute();
-      this.muteBtn.setText(muted ? 'SOUND OFF' : 'SOUND ON');
+      this.muteBtn.setText(muted ? 'SFX OFF' : 'SFX ON');
       track('sound_toggle', { on: !muted });
     });
 
     const musicBtn = this.add
-      .text(C.W / 2 + 34, 12, sfx.musicOn ? 'MUSIC ON' : 'MUSIC OFF', { ...style, fontSize: '10px', color: '#7f8c8d' })
+      .text(C.W / 2 + 30, 32, sfx.musicOn ? 'MUSIC ON' : 'MUSIC OFF', { ...style, fontSize: '9px', color: '#7f8c8d' })
       .setOrigin(0.5, 0)
       .setDepth(20)
       .setScrollFactor(0)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -8, 90, 28), hitAreaCallback: Phaser.Geom.Rectangle.Contains });
     musicBtn.on('pointerdown', (p: Phaser.Input.Pointer) => {
       p.event.stopPropagation();
       sfx.unlock();
@@ -573,7 +578,7 @@ export class Game extends Phaser.Scene {
       const x = side === 0 ? C.ROAD_LEFT - 30 : C.ROAD_RIGHT + 30;
       const sign = this.add.image(0, 0, 'landmark');
       const text = this.add
-        .text(0, -9, lm.label.toUpperCase(), { fontFamily: 'monospace', fontSize: '7px', color: '#ecf0f1', fontStyle: 'bold', align: 'center', wordWrap: { width: 58 } })
+        .text(0, -9, lm.label.toUpperCase(), { fontFamily: PIXEL, fontSize: '7px', color: '#ecf0f1', fontStyle: 'bold', align: 'center', wordWrap: { width: 58 } })
         .setOrigin(0.5);
       const node = this.add.container(x, C.AUTO_Y - remaining, [sign, text]).setDepth(4);
       this.landmarkSigns.push({ node, label: lm.label, passed: false });
@@ -630,7 +635,7 @@ export class Game extends Phaser.Scene {
 
       const sign = this.add.image(0, 0, 'stopsign');
       const label = this.add
-        .text(0, -12, r.dest, { fontFamily: 'monospace', fontSize: '9px', color: '#ffffff', fontStyle: 'bold' })
+        .text(0, -12, r.dest, { fontFamily: PIXEL, fontSize: '9px', color: '#ffffff', fontStyle: 'bold' })
         .setOrigin(0.5);
       const node = this.add.container(x, y, [sign, label]).setDepth(6);
 
@@ -1002,7 +1007,7 @@ export class Game extends Phaser.Scene {
   private pop(text: string, color: string) {
     const t = this.add
       .text(this.auto.x, this.auto.y - 46, text, {
-        fontFamily: 'monospace',
+        fontFamily: PIXEL,
         fontSize: '15px',
         color,
         fontStyle: 'bold',
@@ -1098,7 +1103,7 @@ export class Game extends Phaser.Scene {
       // The back of a lorry, which is where this always goes.
       parts.push(
         this.add
-          .text(0, -38, 'HORN OK PLEASE', { fontFamily: 'monospace', fontSize: '6px', color: '#ffffff', fontStyle: 'bold' })
+          .text(0, -38, 'HORN OK PLEASE', { fontFamily: PIXEL, fontSize: '6px', color: '#ffffff', fontStyle: 'bold' })
           .setOrigin(0.5)
           .setAngle(180),
       );
@@ -1106,7 +1111,7 @@ export class Game extends Phaser.Scene {
     if (kind === 'bus') {
       parts.push(
         this.add
-          .text(0, 0, 'BMTC', { fontFamily: 'monospace', fontSize: '8px', color: '#e9eef5', fontStyle: 'bold' })
+          .text(0, 0, 'BMTC', { fontFamily: PIXEL, fontSize: '8px', color: '#e9eef5', fontStyle: 'bold' })
           .setOrigin(0.5),
       );
     }
@@ -1138,7 +1143,7 @@ export class Game extends Phaser.Scene {
     const sprite = this.add.image(0, 0, `pax${Phaser.Math.Between(0, 3)}`).setFlipX(lane === 2);
     const shout = this.add
       .text(0, -26, 'AUTO!', {
-        fontFamily: 'monospace', fontSize: '10px', color: '#111', fontStyle: 'bold',
+        fontFamily: PIXEL, fontSize: '10px', color: '#111', fontStyle: 'bold',
         backgroundColor: '#ffffff', padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5);

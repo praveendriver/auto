@@ -195,6 +195,33 @@ contributors* on the crash screen, and the extracted route files are polylines
 that can be shared under the same licence. The game itself is a produced work
 and is not share-alike. That's the whole obligation.
 
+## Typography
+
+Two faces, self-hosted in `public/fonts/` (92 KB total, latin + latin-ext):
+
+- **Geist Pixel** — titles, HUD, numbers, buttons. A true pixel face, so it
+  belongs next to the pixel art. Never faux-bolded; that breaks the grid.
+- **DM Sans** — instruction prose and anything that's a sentence.
+
+Both are declared in `index.html` and named in one place,
+[`src/fonts.ts`](src/fonts.ts).
+
+**Two gotchas worth knowing before touching this:**
+
+*Phaser rasterises text to the canvas when the object is created.* A font that
+arrives late is never picked up — the text just silently stays in the fallback
+face. So `main.ts` awaits `readyFonts()` before booting, with a 2s ceiling so a
+bad connection can't leave anyone on a blank screen.
+
+*`latin-ext` is not optional.* The rupee sign (U+20B9) lives there, not in
+`latin`, and it's on every screen. A browser only fetches a `@font-face` when a
+character in its `unicode-range` is actually requested, so `readyFonts()` asks
+for the glyph explicitly — `document.fonts.load(font, 'A₹←→')`. Drop that
+second argument and ₹ silently falls back to a system font.
+
+Self-hosted rather than Google's CDN: two fewer connections on a 4G handshake,
+no third-party request carrying the player's IP, same CDN as the game.
+
 ## Reading the screen
 
 - **Heads in the cab** — one per rider. Peach while riding, **red with `!!`**
