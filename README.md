@@ -43,49 +43,52 @@ lifetime numbers.
 
 ## Analytics
 
-[`src/analytics.ts`](src/analytics.ts) sends game events to **CleverTap on its
-India region (`in1`)**, so the data stays in the country. With no account id
-set it's a silent no-op — the game builds and runs identically.
+[`src/analytics.ts`](src/analytics.ts) sends game events to **PostHog, EU
+region**. With no key set it's a silent no-op — the game builds and runs
+identically.
 
-India's DPDP Act uses a negative list rather than a localisation mandate, so
-this is a deliberate choice rather than a legal requirement. It removes a
-migration later and gives a clean answer if anyone asks.
+**On India residency:** we tried. DPDP uses a negative list rather than a
+localisation mandate and no country is on it, so this is legal; and every
+India-resident analytics product (CleverTap, Mixpanel's India residency,
+MoEngage) turns out to be enterprise sales-gated — none is self-serve. EU is
+the closest self-serve equivalent. The only genuinely India-resident,
+self-serve route is self-hosting Umami or Matomo on a Mumbai/Bangalore VPS,
+which is worth revisiting at real scale or before taking payments (RBI
+localisation is a different and much stricter regime).
 
 **Setup:**
 
-1. Free account at https://clevertap.com (free tier covers 10,000 MAU) and
-   **pick India when it asks for your region** — the region is fixed at signup
-   and can't be changed later.
-2. Dashboard → Settings → Project → copy the **Account ID**.
-3. Store it and redeploy:
+1. Free account at https://eu.posthog.com — **the EU URL, not the US one**;
+   the region is fixed per project and `VITE_POSTHOG_HOST` must match it or
+   events silently go nowhere.
+2. Project settings → copy the **Project API key** (`phc_…`).
+3. Project settings → turn on **Discard client IP data**. City, region and
+   country are still derived at ingest; the IP itself is dropped.
+4. Store it and redeploy:
    ```bash
-   gh secret set VITE_CLEVERTAP_ID --repo praveendriver/auto --body YOUR_ACCOUNT_ID
+   gh secret set VITE_POSTHOG_KEY --repo praveendriver/auto --body phc_…
    gh workflow run deploy --repo praveendriver/auto
    ```
    For local runs, put the same value in `.env` (gitignored).
 
-**Location data is off by default.** `privacy.push({useIP: false})` means no
-IP-derived city or country. Device, OS, browser, screen size and session
-length still come through. To turn geo on:
-`gh variable set VITE_CLEVERTAP_USE_IP --repo praveendriver/auto --body true`.
-On `in1` that inference happens on Indian infrastructure.
-
-**Events:** `App Open` (with `returning`), `Run Start`, `Pickup`, `Drop` (tip,
-combo, ride length), `Missed Stop`, `Rider Fell`, `Mission Done`, `Route Done`,
-`Run End` (fare, seconds, km, what killed them, max aboard, missions, route),
-`Share Click`, `Stats Send`, and the sound toggles. Every event also carries
+**Events:** `app_open` (with `returning`), `run_start`, `pickup`, `drop` (tip,
+combo, ride length), `missed_stop`, `rider_fell`, `mission_done`, `route_done`,
+`run_end` (fare, seconds, km, what killed them, max aboard, missions, route),
+`share_click`, `stats_send`, and the sound toggles. Every event also carries
 `runs_before` and `best_fare`.
 
-**Three things to build on day one:** a Retention cohort on `Run Start`; a
-funnel `App Open → Run Start → Pickup → Drop` (where strangers fall off); and
-`Run End` segmented by `killer` (whether one hazard is doing all the killing).
+**Three things to build on day one:** a Retention insight on `run_start`; a
+funnel `app_open → run_start → pickup → drop` (where strangers fall off); and
+a `run_end` trend broken down by `killer` (whether one hazard does all the
+killing).
 
 Each player is an anonymous install id, never a name. The *send my stats*
 WhatsApp message carries the first 8 characters of it, so a tester's message
-can be matched to their CleverTap profile.
+can be matched to their PostHog person.
 
-**Swapping vendors** means rewriting this one file. Every `track()` call in
-the game goes through `EventName`, so nothing else changes.
+**Swapping vendors** means rewriting this one file — we've now done it twice
+in an hour. Every `track()` call goes through `EventName`; nothing else
+changes.
 
 ## Run
 

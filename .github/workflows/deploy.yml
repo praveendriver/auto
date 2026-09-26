@@ -30,9 +30,8 @@ jobs:
         env:
           # Analytics is a no-op when this is absent, so the game builds and
           # runs fine before the CleverTap project exists.
-          VITE_CLEVERTAP_ID: ${{ secrets.VITE_CLEVERTAP_ID }}
-          VITE_CLEVERTAP_REGION: in1
-          VITE_CLEVERTAP_USE_IP: ${{ vars.VITE_CLEVERTAP_USE_IP }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: https://eu.i.posthog.com
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
