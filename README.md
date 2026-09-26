@@ -43,41 +43,49 @@ lifetime numbers.
 
 ## Analytics
 
-[`src/analytics.ts`](src/analytics.ts) sends game events to PostHog. With no
-key set it's a silent no-op, so nothing changes until you want it to.
+[`src/analytics.ts`](src/analytics.ts) sends game events to **CleverTap on its
+India region (`in1`)**, so the data stays in the country. With no account id
+set it's a silent no-op — the game builds and runs identically.
 
-**Setup (10 minutes):**
+India's DPDP Act uses a negative list rather than a localisation mandate, so
+this is a deliberate choice rather than a legal requirement. It removes a
+migration later and gives a clean answer if anyone asks.
 
-1. Free account at https://app.posthog.com → create a project → copy the
-   *Project API key* from Project settings.
-2. Add it as a repo secret so the deploy picks it up:
-   `gh secret set VITE_POSTHOG_KEY --repo praveendriver/auto --body phc_…`
-   (For local runs, also put it in `.env` — that file is gitignored.)
-3. Project settings → **turn on "Discard client IP data"**. City, region and
-   country are derived from the IP at ingest and kept; the IP itself is not.
-   That's the line between usage analytics and personal data under the DPDP
-   Act, and it's what you'll declare in the Play Store's Data Safety form.
-4. Push anything (or `gh workflow run deploy`) — the key is baked in at
-   build time, so it only takes effect on the next deploy.
+**Setup:**
 
-**What you get, without writing anything:** device model, OS, browser, screen
-size, city/region/country, session length, and *Retention* as a built-in
-insight — the "who came back on day 1, 3, 7" table. Each person is an
-anonymous install id, never a name or a number.
+1. Free account at https://clevertap.com (free tier covers 10,000 MAU) and
+   **pick India when it asks for your region** — the region is fixed at signup
+   and can't be changed later.
+2. Dashboard → Settings → Project → copy the **Account ID**.
+3. Store it and redeploy:
+   ```bash
+   gh secret set VITE_CLEVERTAP_ID --repo praveendriver/auto --body YOUR_ACCOUNT_ID
+   gh workflow run deploy --repo praveendriver/auto
+   ```
+   For local runs, put the same value in `.env` (gitignored).
 
-**Events the game sends:** `app_open` (with `returning`), `run_start`,
-`pickup`, `drop` (tip, combo, ride length), `missed_stop`, `rider_fell`,
-`mission_done`, `route_done`, `run_end` (fare, seconds, km, what killed them,
-max aboard, missions, route), `share_click`, `stats_send`, and the sound
-toggles. Every event also carries `runs_before` and `best_fare`.
+**Location data is off by default.** `privacy.push({useIP: false})` means no
+IP-derived city or country. Device, OS, browser, screen size and session
+length still come through. To turn geo on:
+`gh variable set VITE_CLEVERTAP_USE_IP --repo praveendriver/auto --body true`.
+On `in1` that inference happens on Indian infrastructure.
 
-**Three insights worth building on day one:** a Retention table on
-`run_start`; a Trend of `run_end` broken down by `killer`; and a Funnel
-`app_open → run_start → pickup → drop` — that last one tells you where
-strangers fall off, which is the whole point of the test.
+**Events:** `App Open` (with `returning`), `Run Start`, `Pickup`, `Drop` (tip,
+combo, ride length), `Missed Stop`, `Rider Fell`, `Mission Done`, `Route Done`,
+`Run End` (fare, seconds, km, what killed them, max aboard, missions, route),
+`Share Click`, `Stats Send`, and the sound toggles. Every event also carries
+`runs_before` and `best_fare`.
 
-The *send my stats* WhatsApp message includes the first 8 characters of the
-install id, so a tester's message can be matched to their PostHog row.
+**Three things to build on day one:** a Retention cohort on `Run Start`; a
+funnel `App Open → Run Start → Pickup → Drop` (where strangers fall off); and
+`Run End` segmented by `killer` (whether one hazard is doing all the killing).
+
+Each player is an anonymous install id, never a name. The *send my stats*
+WhatsApp message carries the first 8 characters of it, so a tester's message
+can be matched to their CleverTap profile.
+
+**Swapping vendors** means rewriting this one file. Every `track()` call in
+the game goes through `EventName`, so nothing else changes.
 
 ## Run
 

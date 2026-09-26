@@ -28,9 +28,11 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # Analytics is a no-op when this secret is absent, so the game
-          # builds and runs fine before the PostHog project exists.
-          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          # Analytics is a no-op when this is absent, so the game builds and
+          # runs fine before the CleverTap project exists.
+          VITE_CLEVERTAP_ID: ${{ secrets.VITE_CLEVERTAP_ID }}
+          VITE_CLEVERTAP_REGION: in1
+          VITE_CLEVERTAP_USE_IP: ${{ vars.VITE_CLEVERTAP_USE_IP }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

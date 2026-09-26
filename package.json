@@ -13,7 +13,7 @@
     "vite": "^8.3.0"
   },
   "dependencies": {
-    "phaser": "^3.90.0",
-    "posthog-js": "^1.430.3"
+    "clevertap-web-sdk": "^3.0.3",
+    "phaser": "^3.90.0"
   }
 }
