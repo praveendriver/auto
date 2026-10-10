@@ -21,16 +21,18 @@ export const AUTO_W = 40;
 export const AUTO_H = 56;
 
 /* ---------- speed ---------- */
-export const SPEED_START = 220; // px/s of road scroll at t=0
+export const SPEED_START = 170; // px/s of road scroll at t=0
 /**
  * The ceiling is deliberately out of reach. A runner has to outrun the player
  * eventually — a cap you can master turns every later run into the same run.
  * The quadratic term is what makes the late game "get away from you".
  */
 export const SPEED_MAX = 900;
-export const SPEED_RAMP = 3.2; // px/s gained per second of survival
-export const SPEED_RAMP2 = 0.02; // px/s per second², kicks in after ~40s
+export const SPEED_RAMP = 2.3; // px/s gained per second of survival
+export const SPEED_RAMP2 = 0.011; // px/s per second², kicks in after ~40s
 export const BRAKE_FACTOR = 0.45; // speed multiplier while holding
+/** Width of the middle strip that does not steer. Outside it, a tap changes lane. */
+export const TAP_DEAD_ZONE = 120;
 
 /* ---------- passengers & fare ---------- */
 export const MAX_PAX = 6;

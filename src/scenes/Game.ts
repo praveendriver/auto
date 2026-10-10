@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import * as C from '../config';
-import { Controls, type SwipeDir } from '../input';
+import { Controls, type SteerDir } from '../input';
 import { sfx } from '../audio';
 import { PIXEL } from '../fonts';
 import { pickRoute, swayAt, type Route } from '../routes';
@@ -462,11 +462,29 @@ export class Game extends Phaser.Scene {
     // own; the meter hint stays until the first pickup, because that was the
     // thing nobody found.
     const controls = this.add
-      .text(C.W / 2, C.AUTO_Y - 84, 'swipe ← → to steer · hold to brake', { ...style, fontSize: '12px', color: '#bdbdbd' })
+      .text(C.W / 2, C.AUTO_Y - 84, 'tap left or right to steer · hold to brake', { ...style, fontSize: '12px', color: '#bdbdbd' })
       .setOrigin(0.5)
       .setDepth(20)
       .setScrollFactor(0);
     this.tweens.add({ targets: controls, alpha: 0, delay: 3500, duration: 600, onComplete: () => controls.destroy() });
+
+    // Paint the tap zones for the same few seconds, so the control model is
+    // discoverable without a tutorial. Depth 3 keeps them under the obstacles
+    // and the auto, which drive over the top of them.
+    const zoneW = (C.W - C.TAP_DEAD_ZONE) / 2;
+    const zoneH = 170;
+    const zoneY = C.H - 60 - zoneH / 2;
+    const zones = this.add.container(0, 0).setDepth(3).setScrollFactor(0);
+    for (const [cx, glyph] of [[zoneW / 2, '←'], [C.W - zoneW / 2, '→']] as [number, string][]) {
+      zones.add(this.add.rectangle(cx, zoneY, zoneW - 8, zoneH, 0xffffff, 0.06));
+      zones.add(
+        this.add
+          .text(cx, zoneY, glyph, { ...style, fontSize: '28px', color: '#f1c40f' })
+          .setOrigin(0.5)
+          .setAlpha(0.5),
+      );
+    }
+    this.tweens.add({ targets: zones, alpha: 0, delay: 3500, duration: 600, onComplete: () => zones.destroy() });
 
     this.hint = this.add
       .text(C.W / 2, 62, 'meter is off — pick up someone waving AUTO!', {
@@ -743,7 +761,7 @@ export class Game extends Phaser.Scene {
 
   /* ------------------------------------------------------------ events */
 
-  private changeLane(dir: SwipeDir) {
+  private changeLane(dir: SteerDir) {
     if (!this.alive) return;
     const next = Phaser.Math.Clamp(this.lane + dir, 0, C.LANES - 1);
     if (next === this.lane) return;
@@ -751,7 +769,7 @@ export class Game extends Phaser.Scene {
     sfx.swipe();
     this.dust(-dir);
 
-    // A new swipe interrupts the current one from wherever the auto is.
+    // A new input interrupts the current tween from wherever the auto is.
     this.laneTween?.stop();
     const duration = C.LANE_TWEEN_BASE + C.LANE_TWEEN_PER_PAX * this.pax;
     const tilt = dir * C.WOBBLE_PER_PAX * this.pax;

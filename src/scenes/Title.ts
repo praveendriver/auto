@@ -84,7 +84,7 @@ export class Title extends Phaser.Scene {
       .text(W / 2, 292, 'HOW TO PLAY', { ...pixel, fontSize: '11px', color: '#9a9a9a' })
       .setOrigin(0.5);
 
-    this.step(322, 'swipe', 'Swipe ← → to change lane.\nHold anywhere to brake.');
+    this.step(322, 'tap', 'Tap left or right to steer.\nHold anywhere to brake.');
     this.step(382, 'pax0', 'Pick up anyone waving.\nMore aboard = more fare.');
     this.step(442, 'stopsign', 'Drop them at their green\nsign for a tip.');
     this.step(502, 'cow', 'Hit anything solid and\nthe run is over.');
@@ -123,14 +123,17 @@ export class Title extends Phaser.Scene {
     const pixel = { fontFamily: PIXEL };
     this.add.rectangle(W / 2, y, 300, 50, 0x000000, 0.5).setStrokeStyle(1, 0xffffff, 0.08);
 
-    if (icon === 'swipe') {
-      // No sprite for a gesture, so draw one: an auto between two arrows.
+    if (icon === 'tap') {
+      // No sprite for a gesture, so draw one: the auto flanked by the two tap
+      // pads, blinking alternately to read as "press either side".
       const g = this.add.container(70, y);
-      g.add(this.add.image(0, 0, 'auto').setScale(0.62));
-      const left = this.add.text(-24, 0, '←', { ...pixel, fontSize: '17px', color: '#f5c518' }).setOrigin(0.5);
-      const right = this.add.text(24, 0, '→', { ...pixel, fontSize: '17px', color: '#f5c518' }).setOrigin(0.5);
-      g.add([left, right]);
-      this.tweens.add({ targets: [left, right], alpha: 0.25, duration: 620, yoyo: true, repeat: -1 });
+      g.add(this.add.image(0, 0, 'auto').setScale(0.56));
+      for (const [dx, glyph, delay] of [[-27, '←', 0], [27, '→', 310]] as [number, string, number][]) {
+        g.add(this.add.rectangle(dx, 0, 20, 34, 0xf5c518, 0.14).setStrokeStyle(1, 0xf5c518, 0.45));
+        const t = this.add.text(dx, 0, glyph, { ...pixel, fontSize: '15px', color: '#f5c518' }).setOrigin(0.5);
+        g.add(t);
+        this.tweens.add({ targets: t, alpha: 0.2, duration: 620, yoyo: true, repeat: -1, delay });
+      }
     } else {
       const img = this.add.image(70, y, icon);
       // Normalise wildly different sprite sizes to a consistent icon slot.
