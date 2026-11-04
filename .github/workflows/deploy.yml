@@ -32,6 +32,13 @@ jobs:
           # runs fine before the CleverTap project exists.
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: https://eu.i.posthog.com
+      - run: npm ci --prefix no-brake
+      - run: npm run build --prefix no-brake
+        env:
+          BASE_PATH: /auto/no-brake/
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: https://eu.i.posthog.com
+      - run: mkdir -p dist/no-brake && cp -R no-brake/dist/. dist/no-brake/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
