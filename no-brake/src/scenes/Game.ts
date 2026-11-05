@@ -138,7 +138,8 @@ export class Game extends Phaser.Scene {
   private obstacles: Obstacle[] = [];
   private passengers: Passenger[] = [];
   private ground: Phaser.GameObjects.TileSprite[] = [];
-  private scenery: Phaser.GameObjects.Image[] = [];
+  private scenery: { y: number; destroy: () => void }[] = [];
+  private nightHeadlights?: Phaser.GameObjects.Container;
   private nextSceneryAt = 0;
 
   private nextObstacleAt = 0;
@@ -186,6 +187,7 @@ export class Game extends Phaser.Scene {
     this.passengers = [];
     this.ground = [];
     this.scenery = [];
+    this.nightHeadlights = undefined;
     this.nextSceneryAt = 0;
     this.everBoarded = false;
     buildTextures(this);
@@ -230,11 +232,20 @@ export class Game extends Phaser.Scene {
       this.time.addEvent({ delay: 68, loop: true, callback: () => this.spawnRainDrop() });
       this.time.delayedCall(4200, () => this.scheduleLightning());
     } else if (this.shift.environment === 'night') {
-      this.add.rectangle(C.W / 2, C.H / 2, C.W, C.H, 0x06152b, 0.38).setDepth(14).setScrollFactor(0);
-      this.add
-        .triangle(C.W / 2, C.AUTO_Y - 150, -140, 175, 140, 175, 0, -175, 0xffe6a2, 0.13)
-        .setDepth(16)
-        .setScrollFactor(0);
+      // Darken the road and scenery, but keep the HUD and auto above this layer.
+      this.add.rectangle(C.W / 2, C.H / 2, C.W, C.H, 0x071326, 0.62).setDepth(7).setScrollFactor(0);
+      const beams = this.add.graphics();
+      beams.fillStyle(0xffe6a2, 0.10);
+      beams.fillPoints([
+        new Phaser.Geom.Point(-10, -C.AUTO_H / 2), new Phaser.Geom.Point(-145, -430),
+        new Phaser.Geom.Point(145, -430), new Phaser.Geom.Point(10, -C.AUTO_H / 2),
+      ], true);
+      beams.fillStyle(0xfff0bd, 0.11);
+      beams.fillPoints([
+        new Phaser.Geom.Point(-7, -C.AUTO_H / 2), new Phaser.Geom.Point(-92, -365),
+        new Phaser.Geom.Point(92, -365), new Phaser.Geom.Point(7, -C.AUTO_H / 2),
+      ], true);
+      this.nightHeadlights = this.add.container(C.laneX(this.lane), C.AUTO_Y, [beams]).setDepth(8).setScrollFactor(0);
     }
   }
 
@@ -282,10 +293,13 @@ export class Game extends Phaser.Scene {
     if (this.stats.distPx < this.nextSceneryAt) return;
     this.nextSceneryAt = this.stats.distPx + Phaser.Math.Between(55, 150);
 
-    const total = SCENERY.reduce((a, b) => a + b.weight, 0);
+    const options = this.shift.environment === 'night'
+      ? [...SCENERY.filter((sc) => sc.key !== 'lamp'), { key: 'lamp', weight: 48, sideOffset: 12 }]
+      : SCENERY;
+    const total = options.reduce((a, b) => a + b.weight, 0);
     let r = Math.random() * total;
-    let pick = SCENERY[0];
-    for (const sc of SCENERY) {
+    let pick = options[0];
+    for (const sc of options) {
       r -= sc.weight;
       if (r <= 0) { pick = sc; break; }
     }
@@ -294,7 +308,15 @@ export class Game extends Phaser.Scene {
     const x = base + side * (pick.sideOffset + Phaser.Math.Between(0, 40));
     const img = this.add.image(x, -60, pick.key).setDepth(2);
     if (side > 0 && (pick.key === 'shop' || pick.key === 'shop2')) img.setFlipY(true);
-    this.scenery.push(img);
+    if (this.shift.environment === 'night' && pick.key === 'lamp') {
+      const glow = this.add.ellipse(x, -47, 54, 82, 0xffd76a, 0.18).setDepth(8);
+      const roadPool = this.add.ellipse(side < 0 ? C.ROAD_LEFT + 5 : C.ROAD_RIGHT - 5, -5, 72, 34, 0xffd76a, 0.10).setDepth(8);
+      const lampGroup = this.add.container(0, 0, [img, glow, roadPool]);
+      lampGroup.setDepth(8);
+      this.scenery.push(lampGroup);
+    } else {
+      this.scenery.push(img);
+    }
   }
 
   private scrollScenery(move: number) {
@@ -335,6 +357,7 @@ export class Game extends Phaser.Scene {
 
     this.auto = this.add.container(C.laneX(this.lane), C.AUTO_Y, [body, ...headParts, this.autoPaxText]);
     this.auto.setDepth(10);
+    if (this.nightHeadlights) this.nightHeadlights.x = this.auto.x;
   }
 
 
@@ -490,6 +513,7 @@ export class Game extends Phaser.Scene {
     sfx.setEngine(speedRatio, true);
 
     this.stats.distPx += move;
+    if (this.nightHeadlights) this.nightHeadlights.x = this.auto.x;
     // Angry riders have stopped paying. They still take a seat.
     this.stats.fare += move * C.FARE_PER_PX * this.riders.filter((r) => !r.angry).length;
     // A quiet tick every ₹10 earned — you can hear the meter running.
