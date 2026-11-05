@@ -6,6 +6,8 @@ import { PIXEL } from '../fonts';
 import { pickRoute, swayAt, type Route } from '../routes';
 import { buildTextures, SCENERY } from '../art';
 import { track } from '../analytics';
+import { getShift, type Shift, readShiftProgress } from '../shifts';
+import { readStats } from '../stats';
 
 type Kind = keyof typeof C.OBSTACLES;
 
@@ -82,79 +84,10 @@ const LOOK: Record<Kind, { w: number; h: number; color: number; label: string; c
 /** Hazards two lanes wide. Placed on a lane boundary and block both. */
 const WIDE: ReadonlySet<Kind> = new Set<Kind>(['baraat', 'water']);
 
-/* ------------------------------------------------------------ missions */
-
-type Mission = {
-  id: string;
-  text: string;
-  check: (st: RunStats, pax: number, combo: number) => boolean;
-  done: boolean;
-};
-
-/**
- * Each run offers three of these. They're what stops "getting good" from
- * meaning "every run is the same": a run where you're trying to carry six
- * plays nothing like one where you're chasing five clean drops.
- */
-const MISSION_POOL: Omit<Mission, 'done'>[] = [
-  { id: 'carry6', text: 'Carry 6 at once', check: (st) => st.maxAboard >= 6 },
-  { id: 'carry4', text: 'Carry 4 at once', check: (st) => st.maxAboard >= 4 },
-  { id: 'drop3', text: 'Drop 3 riders', check: (st) => st.dropped >= 3 },
-  { id: 'drop6', text: 'Drop 6 riders', check: (st) => st.dropped >= 6 },
-  { id: 'combo3', text: '3 clean drops in a row', check: (st) => st.maxCombo >= 3 },
-  { id: 'combo5', text: '5 clean drops in a row', check: (st) => st.maxCombo >= 5 },
-  { id: 'cows8', text: 'Dodge 8 cows', check: (st) => st.cowsDodged >= 8 },
-  { id: 'cows15', text: 'Dodge 15 cows', check: (st) => st.cowsDodged >= 15 },
-  { id: 'km1', text: 'Drive 1 km', check: (st) => st.distPx >= 10000 },
-  { id: 'km2', text: 'Drive 2 km', check: (st) => st.distPx >= 20000 },
-  { id: 'fare300', text: 'Earn ₹300', check: (st) => st.fare >= 300 },
-  { id: 'fare600', text: 'Earn ₹600', check: (st) => st.fare >= 600 },
-  { id: 'tips100', text: '₹100 in tips', check: (st) => st.tips >= 100 },
-  { id: 'live45', text: 'Survive 45 seconds', check: (st) => st.seconds >= 45 },
-  { id: 'live90', text: 'Survive 90 seconds', check: (st) => st.seconds >= 90 },
-];
-
-const MISSIONS_KEY = 'auto_missions_done';
-
-function missionsDone(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(MISSIONS_KEY) ?? '[]') as string[]);
-  } catch {
-    return new Set();
-  }
-}
-
-function markMissionDone(id: string) {
-  try {
-    const done = missionsDone();
-    done.add(id);
-    localStorage.setItem(MISSIONS_KEY, JSON.stringify([...done]));
-  } catch {
-    // storage blocked — the run still pays out, it just won't remember
-  }
-}
-
-/** Three not-yet-completed missions; once the pool is exhausted it cycles. */
-function pickMissions(): Mission[] {
-  let done = missionsDone();
-  let pool = MISSION_POOL.filter((m) => !done.has(m.id));
-  if (pool.length < C.MISSIONS_PER_RUN) {
-    try {
-      localStorage.removeItem(MISSIONS_KEY);
-    } catch {
-      // ignore
-    }
-    pool = [...MISSION_POOL];
-  }
-  return Phaser.Utils.Array.Shuffle([...pool])
-    .slice(0, C.MISSIONS_PER_RUN)
-    .map((m) => ({ ...m, done: false }));
-}
-
-function freshStats(): RunStats {
+function freshStats(shift: Shift): RunStats {
   return {
     fare: 0, distPx: 0, carried: 0, maxAboard: 0, cowsDodged: 0, dropped: 0, tips: 0,
-    maxCombo: 0, seconds: 0, missionsDone: [], missions: [],
+    maxCombo: 0, seconds: 0, shift: { ...shift, completed: false },
     route: { slug: '', title: '', city: '', lengthM: 0, done: false },
   };
 }
@@ -169,10 +102,7 @@ export type RunStats = {
   tips: number;
   maxCombo: number;
   seconds: number;
-  /** Ids of missions completed this run. */
-  missionsDone: string[];
-  /** The three missions offered this run, for the crash screen. */
-  missions: { id: string; text: string; done: boolean }[];
+  shift: Shift & { completed: boolean };
   route: { slug: string; title: string; city: string; lengthM: number; done: boolean };
 };
 
@@ -189,11 +119,11 @@ export class Game extends Phaser.Scene {
   private elapsed = 0;
   private speed = C.SPEED_START;
 
-  private stats: RunStats = freshStats();
+  private stats!: RunStats;
   private combo = 0;
   private wet = false;
   private seen = new Set<Kind>();
-  private missions: Mission[] = [];
+  private shift!: Shift;
   private route!: Route;
   /** Current horizontal lean of the world, in px. Eased toward the route's curvature. */
   private swayX = 0;
@@ -218,7 +148,7 @@ export class Game extends Phaser.Scene {
   private hudDist!: Phaser.GameObjects.Text;
   private hudPax!: Phaser.GameObjects.Text;
   private hudNext!: Phaser.GameObjects.Text;
-  private hudMissions!: Phaser.GameObjects.Text;
+  private hudObjective!: Phaser.GameObjects.Text;
   /** Bottom strip: one slot per seat showing who's aboard and their mood. */
   private seats: { bg: Phaser.GameObjects.Rectangle; dest: Phaser.GameObjects.Text; face: Phaser.GameObjects.Text }[] = [];
   /** Heads poking out of the auto itself, so mood is visible where you're looking. */
@@ -232,21 +162,22 @@ export class Game extends Phaser.Scene {
     super('Game');
   }
 
-  create() {
+  create(data?: { shiftId?: number }) {
     this.lane = 1;
     this.riders = [];
     this.stops = [];
     this.alive = true;
     this.elapsed = 0;
     this.speed = C.SPEED_START;
-    this.stats = freshStats();
+    const campaign = readShiftProgress();
+    this.shift = getShift(data?.shiftId ?? campaign.unlocked);
+    this.stats = freshStats(this.shift);
     this.combo = 0;
     this.wet = false;
     this.seen = new Set(['cow', 'bus', 'scooter', 'pothole', 'breaker', 'cop']);
-    this.missions = pickMissions();
-    this.stats.missions = this.missions.map((m) => ({ id: m.id, text: m.text, done: false }));
     this.route = pickRoute();
     this.stats.route = { slug: this.route.slug, title: this.route.title, city: this.route.city, lengthM: this.route.lengthM, done: false };
+    track('run_start', { route: this.route.slug, shift_id: this.shift.id, run_number: readStats().runs + 1 });
     this.swayX = 0;
     this.landmarkSigns = [];
     this.landmarksSpawned = new Set();
@@ -364,7 +295,7 @@ export class Game extends Phaser.Scene {
       .setOrigin(1, 0)
       .setDepth(20)
       .setScrollFactor(0);
-    this.hudMissions = this.add
+    this.hudObjective = this.add
       .text(C.W - 12, 34, '', { ...style, fontSize: '9px', color: '#f1c40f' })
       .setOrigin(1, 0)
       .setDepth(20)
@@ -376,11 +307,10 @@ export class Game extends Phaser.Scene {
       .setDepth(20)
       .setScrollFactor(0);
 
-    // This run's three missions, shown for a few seconds and then out of the way.
-    const lines = this.missions.map((m) => `○ ${m.text}`).join('\n');
+    // This shift's job is the one goal to focus on this run.
     const panel = this.add
-      .text(C.W / 2, 150, `TODAY'S MISSIONS\n${lines}`, {
-        ...style, fontSize: '12px', color: '#f1c40f', align: 'center', lineSpacing: 5,
+      .text(C.W / 2, 150, `SHIFT ${this.shift.id} · ${this.shift.name.toUpperCase()}\n${this.shift.objective}\n${this.shift.trafficLabel}`, {
+        ...style, fontSize: '11px', color: '#f1c40f', align: 'center', lineSpacing: 4,
         backgroundColor: '#111111cc', padding: { x: 12, y: 8 },
       })
       .setOrigin(0.5)
@@ -522,7 +452,6 @@ export class Game extends Phaser.Scene {
     this.followRoute(move);
     this.resolveCollisions();
     this.spawn(time);
-    this.checkMissions();
     this.updateHud();
   }
 
@@ -738,6 +667,7 @@ export class Game extends Phaser.Scene {
       if (inLane && bottom >= me.top && top <= me.bottom) {
         this.dropOff(st);
         this.stops.splice(i, 1);
+        if (!this.alive) return;
         continue;
       }
       // Fully past the auto without a drop: they missed it.
@@ -840,6 +770,7 @@ export class Game extends Phaser.Scene {
       this.coins(Math.min(8, 3 + Math.floor(tip / 15)));
     } else sfx.swipe();
     this.tweens.add({ targets: this.auto, scaleX: 0.92, scaleY: 1.08, duration: 80, yoyo: true });
+    if (this.stats.dropped >= this.shift.drops) this.completeShift();
   }
 
   private missStop(st: Stop) {
@@ -968,22 +899,36 @@ export class Game extends Phaser.Scene {
     this.pop(this.riders.length ? 'splash! everyone soaked' : 'splash!', '#5dade2');
   }
 
-  /** Runs the mission predicates; completes and pays out immediately. */
-  private checkMissions() {
-    for (const m of this.missions) {
-      if (m.done) continue;
-      if (m.check(this.stats, this.pax, this.combo)) {
-        m.done = true;
-        markMissionDone(m.id);
-        this.stats.missionsDone.push(m.id);
-        const entry = this.stats.missions.find((x) => x.id === m.id);
-        if (entry) entry.done = true;
-        this.stats.fare += C.MISSION_REWARD;
-        this.pop(`✓ ${m.text} · +₹${C.MISSION_REWARD}`, '#f1c40f');
-        track('mission_done', { mission: m.id, seconds: Math.round(this.stats.seconds) });
-        sfx.drop(100);
-      }
-    }
+  private completeShift() {
+    if (!this.alive) return;
+    this.alive = false;
+    this.stats.shift.completed = true;
+    this.laneTween?.stop();
+    sfx.setEngine(0, false);
+    sfx.drop(200);
+    track('shift_complete', {
+      shift_id: this.shift.id,
+      fare: Math.floor(this.stats.fare),
+      seconds: Math.round(this.stats.seconds),
+      dropped: this.stats.dropped,
+    });
+    track('run_end', {
+      killer: 'shift_complete',
+      shift_id: this.shift.id,
+      completed: true,
+      fare: Math.floor(this.stats.fare),
+      seconds: Math.round(this.stats.seconds),
+      km: +(this.stats.distPx / 10000).toFixed(2),
+      carried: this.stats.carried,
+      dropped: this.stats.dropped,
+      max_aboard: this.stats.maxAboard,
+      max_combo: this.stats.maxCombo,
+      route: this.route.slug,
+      route_done: this.stats.route.done,
+    });
+    this.cameras.main.flash(220, 241, 196, 15, false);
+    this.pop('SHIFT COMPLETE!', '#f1c40f');
+    this.time.delayedCall(700, () => this.scene.start('Over', this.stats));
   }
 
   private crash(kind: Kind) {
@@ -993,6 +938,8 @@ export class Game extends Phaser.Scene {
     sfx.setEngine(0, false);
     track('run_end', {
       killer: kind,
+      shift_id: this.shift.id,
+      completed: false,
       fare: Math.floor(this.stats.fare),
       seconds: Math.round(this.stats.seconds),
       km: +(this.stats.distPx / 10000).toFixed(2),
@@ -1000,7 +947,6 @@ export class Game extends Phaser.Scene {
       dropped: this.stats.dropped,
       max_aboard: this.stats.maxAboard,
       max_combo: this.stats.maxCombo,
-      missions_done: this.stats.missionsDone.length,
       route: this.route.slug,
       route_done: this.stats.route.done,
       speed_at_end: Math.round(this.speed),
@@ -1039,21 +985,29 @@ export class Game extends Phaser.Scene {
     if (time >= this.nextObstacleAt) {
       this.spawnObstacle();
       const t = Math.min(1, this.elapsed / 1000 / C.SPAWN_RAMP_S);
-      this.nextObstacleAt = time + Phaser.Math.Linear(C.SPAWN_START, C.SPAWN_MIN, t);
+      const pace = this.shift.traffic === 'calm' ? 1.35 : this.shift.traffic === 'rush' ? 0.78 : 1;
+      this.nextObstacleAt = time + Phaser.Math.Linear(C.SPAWN_START, C.SPAWN_MIN, t) * pace;
     }
     if (time >= this.nextPaxAt) {
       this.spawnPassenger();
-      this.nextPaxAt = time + Phaser.Math.Between(C.PAX_SPAWN_MIN, C.PAX_SPAWN_MAX);
+      const pace = this.shift.traffic === 'rush' ? 0.82 : 1;
+      this.nextPaxAt = time + Phaser.Math.Between(C.PAX_SPAWN_MIN, C.PAX_SPAWN_MAX) * pace;
     }
   }
 
   private pickKind(): Kind {
     const km = this.stats.distPx / 10000;
     const entries = (Object.entries(C.OBSTACLES) as [Kind, { weight: number; unlockKm: number }][])
-      .filter(([, v]) => km >= v.unlockKm);
-    let r = Math.random() * entries.reduce((s, [, v]) => s + v.weight, 0);
-    for (const [k, v] of entries) {
-      r -= v.weight;
+      .filter(([kind, v]) => km >= v.unlockKm && !(this.shift.traffic === 'calm' && LOOK[kind].crash))
+      .map(([kind, v]) => {
+        const factor = this.shift.traffic === 'monsoon' && kind === 'water' ? 4
+          : this.shift.traffic === 'rush' && ['bus', 'scooter', 'truck'].includes(kind) ? 2
+            : this.shift.traffic === 'wedding' && kind === 'baraat' ? 5 : 1;
+        return [kind, v.weight * factor] as [Kind, number];
+      });
+    let r = Math.random() * entries.reduce((s, [, weight]) => s + weight, 0);
+    for (const [k, weight] of entries) {
+      r -= weight;
       if (r <= 0) return k;
     }
     return 'cow';
@@ -1178,12 +1132,8 @@ export class Game extends Phaser.Scene {
     const km = this.stats.distPx / 10000;
     const routeKm = this.route.lengthM / 1000;
     this.hudDist.setText(km < routeKm ? `${km.toFixed(2)} / ${routeKm.toFixed(2)} km` : `${km.toFixed(2)} km`);
-    this.hudRoute.setText(
-      km < routeKm ? `${this.route.title.toUpperCase()} · ${this.route.city.toUpperCase()}` : `BEYOND ${this.route.title.toUpperCase()}`,
-    );
-    const done = this.missions.filter((m) => m.done).length;
-    const comboTxt = this.combo >= 2 ? `  ×${Math.min(C.COMBO_MAX, 1 + C.COMBO_STEP * this.combo).toFixed(1)}` : '';
-    this.hudMissions.setText(`${done}/${this.missions.length} missions${comboTxt}`);
+    this.hudRoute.setText(`SHIFT ${this.shift.id} · ${this.shift.name.toUpperCase()}`);
+    this.hudObjective.setText(`DROP ${this.stats.dropped}/${this.shift.drops}`);
     this.autoPaxText.setText(String(this.pax));
 
     // Meter mode is a colour, not a number: green while anyone's paying.

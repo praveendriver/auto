@@ -77,10 +77,6 @@ export const OBSTACLES = {
 export const COMBO_STEP = 0.35; // ×1.35, ×1.7, ×2.05 ...
 export const COMBO_MAX = 3.0;
 
-/* ---------- missions ---------- */
-export const MISSIONS_PER_RUN = 3;
-export const MISSION_REWARD = 60; // ₹ added to the run's fare per completed mission
-
 /* ---------- drop-offs ---------- */
 /**
  * Every rider boards with a destination some distance ahead. A stop marker

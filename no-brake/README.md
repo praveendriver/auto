@@ -1,9 +1,9 @@
 # Riksha
 
-Top-down vertical-scrolling auto-rickshaw runner. Tap left or right to change
-lane and pick up passengers from the kerb. **The whole game is: how many can you
-fit before it tips.** More passengers means more fare per metre and worse
-handling — lane changes get slower and the auto wobbles harder.
+Top-down vertical-scrolling auto-rickshaw game. Tap left or right to change
+lanes, pick up passengers and drop them at their stops. The campaign has five
+short shifts, each with a clear delivery goal and a different traffic pattern.
+Complete a shift to earn its bonus and unlock the next one.
 
 All the art is vector shapes drawn in code and baked into textures at startup
 ([`src/art.ts`](src/art.ts)) — no image files, nothing to load or license, and
@@ -15,11 +15,12 @@ cheap enough that nothing is lost when a real sprite sheet replaces it.
 
 ## It's live
 
-**https://praveendriver.github.io/auto/**
+**https://praveendriver.github.io/auto/no-brake/**
 
 Hosted on GitHub Pages from https://github.com/praveendriver/auto — free, no
 card, no expiry. Every push to `main` rebuilds and redeploys automatically
 via `.github/workflows/deploy.yml`; nothing to run by hand.
+The original endless-runner build is still at `/auto/`.
 
 ```bash
 git add -A && git commit -m "..." && git push    # that's the deploy
@@ -28,7 +29,7 @@ git add -A && git commit -m "..." && git push    # that's the deploy
 Watch it with `gh run watch`. The build takes about a minute.
 
 Pages serves a project site from `/auto/`, so `vite.config.ts` sets
-`base: '/auto/'`. Any host that serves from the root wants
+`base: '/auto/'`; the campaign copy uses `/auto/no-brake/`. Any host that serves from the root wants
 `BASE_PATH=/ npm run build` instead.
 
 **Want a cleaner URL for testers?** `auto-game.netlify.app` reads better than
@@ -71,9 +72,9 @@ localisation is a different and much stricter regime).
    ```
    For local runs, put the same value in `.env` (gitignored).
 
-**Events:** `app_open` (with `returning`), `run_start`, `pickup`, `drop` (tip,
-combo, ride length), `missed_stop`, `rider_fell`, `mission_done`, `route_done`,
-`run_end` (fare, seconds, km, what killed them, max aboard, missions, route),
+**Events:** `app_open` (with `returning`), `run_start` (includes `shift_id`), `pickup`, `drop` (tip,
+combo, ride length), `missed_stop`, `rider_fell`, `route_done`, `shift_complete`,
+`run_end` (fare, seconds, km, what ended the shift, shift ID, route),
 `share_click`, `stats_send`, and the sound toggles. Every event also carries
 `runs_before` and `best_fare`.
 
@@ -115,9 +116,9 @@ Phone: tap the left or right half of the screen. Desktop: arrows or A/D.
 | **Passenger** | Waves `AUTO!` from the kerb, with an orange box in the kerb lane. Drive through the box to board. Max 6. |
 | **Stop** | Green sign + green box in a kerb lane. Be in that lane when you reach it to drop the rider and collect a tip. |
 
-Fare only accrues with passengers aboard, so an empty auto earns nothing —
-that's the incentive to fill it. The run ends on the first crash. Best fare is
-kept in `localStorage`.
+Fare only accrues with passengers aboard. A shift ends when its drop-off goal
+is complete or the auto crashes. Fare and shift bonuses add to a persistent
+wallet in `localStorage`.
 
 ## Riders and stops
 
@@ -138,28 +139,17 @@ position. It's seat turnover: fill up, hit your stops, fill up again. With six
 aboard you'll have stops arriving on both kerbs in quick succession, across
 traffic. That's what full is supposed to feel like.
 
-## Why it shouldn't get boring once you're good
+## The five shifts
 
-Three things push back on mastery, all cheap:
+1. **First Fare:** one drop-off, calm traffic to learn the pickup and stop.
+2. **Two Stops:** two drop-offs in regular traffic.
+3. **Monsoon Meter:** two drop-offs with more puddles.
+4. **Rush Hour:** three drop-offs, with buses and scooters appearing more often.
+5. **Wedding Detour:** three drop-offs through more frequent baraats.
 
-- **Speed never settles.** The ramp has a quadratic term and a ceiling that's
-  effectively out of reach. A cap you can master turns every later run into
-  the same run; this one gets away from you.
-- **Hazards unlock by distance.** Water at 0.25 km, the baraat at 0.5, the
-  truck at 1 km, each announced on first sighting. Driving further means
-  meeting things the shorter run never showed you.
-- **Combo.** Consecutive clean drops multiply the tip — ×1.35, ×1.7, ×2.05, up
-  to ×3. A miss or a bump breaks it. This is where a good player plays
-  *differently*, not just longer: the skilled run is the one chasing the chain.
-
-And a layer around the run:
-
-- **Missions.** Three per run from a pool of fifteen — *Carry 6 at once*,
-  *3 clean drops in a row*, *Dodge 15 cows*. Each pays ₹60 the moment it's
-  done, completed ones don't come back until the pool is exhausted, and the
-  crash screen shows what you were chasing. A run where you're trying to carry
-  six plays nothing like one where you're chasing a combo — that's the
-  variation, and it's by intention rather than by noise.
+The objective stays visible in the HUD. Each completed shift unlocks the next
+and adds a bonus to the wallet. Completed shifts and wallet balance are saved
+locally; after the fifth shift, players can replay it.
 
 ## Real roads
 
@@ -238,8 +228,7 @@ no third-party request carrying the player's IP, same CDN as the game.
 - **`3 / 6 · meter ON`** — green while anyone aboard is paying, grey when the
   meter's off. The fare counter greys out with it.
 - **`TEMPLE 120m ←`** — nearest stop and which kerb.
-- **`1/3 missions  ×1.7`** top-right — missions done this run, and the live
-  combo multiplier when you're on a chain.
+- **`DROP 1/2`** top-right — delivery progress toward the shift goal.
 
 ## Sound
 
@@ -294,6 +283,6 @@ try is a longer `DROP_MIN_PX` so they don't stack up.
 
 ## Not yet
 
-A commissioned sprite sheet (the code-drawn art is the spec for it), more roads (the city map as a level select — *14 of 40 Bangalore
-roads driven* — is the retention hook this unlocks), decorations, a *daily*
-mission set, any monetisation.
+Earlier-shift replay selection, more roads, unlockable auto decorations, and a
+daily featured shift are possible next steps. The five-shift campaign is the
+first test of whether distinct jobs make players want to continue.

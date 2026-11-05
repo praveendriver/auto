@@ -16,13 +16,13 @@ export type Lifetime = {
   totalFare: number;
   carried: number;
   dropped: number;
-  missions: number;
+  shiftsCompleted: number;
   routesDone: number;
   firstPlayed: string;
 };
 
 const EMPTY: Lifetime = {
-  runs: 0, seconds: 0, bestFare: 0, totalFare: 0, carried: 0, dropped: 0, missions: 0, routesDone: 0,
+  runs: 0, seconds: 0, bestFare: 0, totalFare: 0, carried: 0, dropped: 0, shiftsCompleted: 0, routesDone: 0,
   firstPlayed: '',
 };
 
@@ -43,7 +43,7 @@ export function recordRun(run: RunStats): Lifetime {
     totalFare: s.totalFare + Math.floor(run.fare),
     carried: s.carried + run.carried,
     dropped: s.dropped + run.dropped,
-    missions: s.missions + run.missionsDone.length,
+    shiftsCompleted: s.shiftsCompleted + (run.shift.completed ? 1 : 0),
     routesDone: s.routesDone + (run.route.done ? 1 : 0),
     firstPlayed: s.firstPlayed || new Date().toISOString().slice(0, 10),
   };
@@ -62,7 +62,7 @@ export function summary(s: Lifetime): string {
     '🛺 Riksha — my stats',
     `${s.runs} runs · ${mins} min played · since ${s.firstPlayed}`,
     `best ₹${s.bestFare} · ₹${s.totalFare} total`,
-    `${s.carried} picked up · ${s.dropped} dropped · ${s.missions} missions · ${s.routesDone} roads finished`,
+    `${s.carried} picked up · ${s.dropped} dropped · ${s.shiftsCompleted} shifts completed · ${s.routesDone} roads finished`,
     `device: ${/Android/i.test(navigator.userAgent) ? 'Android' : /iPhone|iPad/i.test(navigator.userAgent) ? 'iOS' : 'other'} · ${screen.width}×${screen.height}`,
     `id: ${installId().slice(0, 8)}`,
   ].join('\n');

@@ -6,6 +6,7 @@ import { readStats } from '../stats';
 import { pickRoute } from '../routes';
 import { DISPLAY, PIXEL, SANS } from '../fonts';
 import { track, setSuper } from '../analytics';
+import { getShift, readShiftProgress, SHIFTS } from '../shifts';
 
 /**
  * Start screen, and the only tutorial the game gets.
@@ -29,8 +30,17 @@ export class Title extends Phaser.Scene {
     buildTextures(this);
     const route = pickRoute();
     const stats = readStats();
-    setSuper({ runs_before: stats.runs, best_fare: stats.bestFare, first_played: stats.firstPlayed || null });
-    track('app_open', { route: route.slug, returning: stats.runs > 0 });
+    const campaign = readShiftProgress();
+    const shift = getShift(campaign.unlocked);
+    setSuper({
+      runs_before: stats.runs,
+      best_fare: stats.bestFare,
+      first_played: stats.firstPlayed || null,
+      shift_cash: campaign.cash,
+      shifts_done: campaign.completed.length,
+      unlocked_shift: campaign.unlocked,
+    });
+    track('app_open', { route: route.slug, returning: stats.runs > 0, unlocked_shift: campaign.unlocked });
 
     this.drawBackdrop();
 
@@ -44,7 +54,10 @@ export class Title extends Phaser.Scene {
       .text(W / 2, 58, 'RIKSHA', { fontFamily: DISPLAY, fontSize: '50px' })
       .setOrigin(0.5);
     this.add
-      .text(W / 2, 96, 'how many can you fit?', { ...pixel, fontSize: '13px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })
+      .text(W / 2, 96, 'five quick shifts · earn your fare', { ...pixel, fontSize: '12px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })
+      .setOrigin(0.5);
+    this.add
+      .text(W / 2, 119, `${route.title.toUpperCase()} · ${route.city.toUpperCase()}`, { ...pixel, fontSize: '9px', color: '#f5c518' })
       .setOrigin(0.5);
 
     /* ------------------------------------------------- the hero sprite */
@@ -63,43 +76,42 @@ export class Title extends Phaser.Scene {
     }
     this.tweens.add({ targets: hero, y: 163, duration: 950, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    /* ----------------------------------------------------- route badge */
+    /* ----------------------------------------------------- shift card */
 
     const badge = this.add.container(W / 2, 246);
-    badge.add(this.add.rectangle(0, 0, 250, 40, 0x000000, 0.55).setStrokeStyle(1, 0xf5c518, 0.5));
+    badge.add(this.add.rectangle(0, 0, 300, 78, 0x000000, 0.62).setStrokeStyle(2, 0xf5c518, 0.65));
     badge.add(
       this.add
-        .text(0, -8, `${route.title.toUpperCase()} · ${route.city.toUpperCase()}`, { ...pixel, fontSize: '12px', color: '#f5c518' })
+        .text(0, -24, campaign.completed.length === SHIFTS.length
+          ? `CAMPAIGN COMPLETE · ${shift.name.toUpperCase()}`
+          : `SHIFT ${shift.id}/${SHIFTS.length} · ${shift.name.toUpperCase()}`, { ...pixel, fontSize: '12px', color: '#f5c518' })
         .setOrigin(0.5),
     );
-    badge.add(
-      this.add
-        .text(0, 8, `${(route.lengthM / 1000).toFixed(2)} km of real road`, { ...pixel, fontSize: '10px', color: '#9a9a9a' })
-        .setOrigin(0.5),
-    );
+    badge.add(this.add.text(0, -5, shift.objective, { ...pixel, fontSize: '11px' }).setOrigin(0.5));
+    badge.add(this.add.text(0, 13, shift.trafficLabel, { ...pixel, fontSize: '9px', color: '#c7c4ba' }).setOrigin(0.5));
+    badge.add(this.add.text(0, 29, `SHIFT BONUS  ₹${shift.reward}`, { ...pixel, fontSize: '9px', color: '#2ecc71' }).setOrigin(0.5));
 
     /* --------------------------------------------------- how to play */
 
     this.add
-      .text(W / 2, 292, 'HOW TO PLAY', { ...pixel, fontSize: '11px', color: '#9a9a9a' })
+      .text(W / 2, 305, 'HOW TO PLAY', { ...pixel, fontSize: '11px', color: '#9a9a9a' })
       .setOrigin(0.5);
 
-    this.step(322, 'tap', 'Tap left or right to change lanes.');
-    this.step(382, 'pax0', 'Pick up anyone waving.\nMore aboard = more fare.');
-    this.step(442, 'stopsign', 'Drop them at their green\nsign for a tip.');
-    this.step(502, 'cow', 'Hit anything solid and\nthe run is over.');
+    this.step(338, 'tap', 'Tap either side to switch lanes.');
+    this.step(392, 'pax0', 'Pick up a passenger. Follow\ntheir green sign to drop them.');
+    this.step(446, 'cow', 'Dodge traffic and finish the job.');
 
     /* --------------------------------------------------------- start */
 
-    const btn = this.add.container(W / 2, 570);
+    const btn = this.add.container(W / 2, 550);
     const plate = this.add.rectangle(0, 0, 210, 44, 0xf5c518).setStrokeStyle(3, 0x000000, 0.85);
     btn.add(plate);
-    btn.add(this.add.text(0, 0, 'TAP TO DRIVE', { ...pixel, fontSize: '18px', color: '#1c1c1e' }).setOrigin(0.5));
+    const startLabel = campaign.completed.length === SHIFTS.length ? `REPLAY SHIFT ${shift.id}` : `START SHIFT ${shift.id}`;
+    btn.add(this.add.text(0, 0, startLabel, { ...pixel, fontSize: '15px', color: '#1c1c1e' }).setOrigin(0.5));
     this.tweens.add({ targets: btn, scale: 1.045, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    const footer = stats.runs > 0
-      ? `best ₹${stats.bestFare}  ·  ${stats.runs} run${stats.runs === 1 ? '' : 's'}`
-      : 'roads © OpenStreetMap contributors';
+    const finished = campaign.completed.length;
+    const footer = `WALLET  ₹${campaign.cash}   ·   ${finished}/${SHIFTS.length} SHIFTS DONE`;
     this.add
       .text(W / 2, H - 16, footer, { ...pixel, fontSize: '10px', color: '#6f6f6f' })
       .setOrigin(0.5);
@@ -108,8 +120,7 @@ export class Title extends Phaser.Scene {
 
     const go = () => {
       sfx.unlock();
-      track('run_start', { route: route.slug, run_number: stats.runs + 1 });
-      this.scene.start('Game');
+      this.scene.start('Game', { shiftId: shift.id });
     };
     this.input.once('pointerdown', go);
     this.input.keyboard?.once('keydown', go);
