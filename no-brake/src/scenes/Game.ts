@@ -191,6 +191,7 @@ export class Game extends Phaser.Scene {
     buildTextures(this);
 
     this.drawRoad();
+    this.drawShiftAtmosphere();
     this.drawAuto();
     this.drawHud();
 
@@ -221,6 +222,59 @@ export class Game extends Phaser.Scene {
       this.add.tileSprite((C.ROAD_LEFT + C.ROAD_RIGHT) / 2, C.H / 2, roadW, C.H, 'road').setDepth(0),
     ];
     this.ground[1].tilePositionX = 100;
+  }
+
+  private drawShiftAtmosphere() {
+    if (this.shift.environment === 'monsoon') {
+      this.add.rectangle(C.W / 2, C.H / 2, C.W, C.H, 0x5b7899, 0.1).setDepth(14).setScrollFactor(0);
+      this.time.addEvent({ delay: 68, loop: true, callback: () => this.spawnRainDrop() });
+      this.time.delayedCall(4200, () => this.scheduleLightning());
+    } else if (this.shift.environment === 'night') {
+      this.add.rectangle(C.W / 2, C.H / 2, C.W, C.H, 0x06152b, 0.38).setDepth(14).setScrollFactor(0);
+      this.add
+        .triangle(C.W / 2, C.AUTO_Y - 150, -140, 175, 140, 175, 0, -175, 0xffe6a2, 0.13)
+        .setDepth(16)
+        .setScrollFactor(0);
+    }
+  }
+
+  private spawnRainDrop() {
+    if (!this.alive) return;
+    const x = Phaser.Math.Between(C.ROAD_LEFT - 20, C.ROAD_RIGHT + 20);
+    const drop = this.add
+      .rectangle(x, -14, 2, 13, 0xb9e3ff, 0.38)
+      .setAngle(-14)
+      .setDepth(16)
+      .setScrollFactor(0);
+    this.tweens.add({
+      targets: drop,
+      x: x + 65,
+      y: C.H + 18,
+      alpha: 0.08,
+      duration: 720,
+      onComplete: () => drop.destroy(),
+    });
+  }
+
+  private scheduleLightning() {
+    if (!this.alive) return;
+    this.lightningStrike();
+    this.time.delayedCall(Phaser.Math.Between(8500, 13500), () => this.scheduleLightning());
+  }
+
+  private lightningStrike() {
+    const x = Phaser.Math.Between(C.ROAD_LEFT + 20, C.ROAD_RIGHT - 20);
+    const bolt = this.add.graphics().setDepth(17).setScrollFactor(0);
+    bolt.lineStyle(2, 0xd9f0ff, 0.95);
+    bolt.beginPath();
+    bolt.moveTo(x, 0);
+    bolt.lineTo(x - 8, 35);
+    bolt.lineTo(x + 5, 51);
+    bolt.lineTo(x - 7, 78);
+    bolt.strokePath();
+    const flash = this.add.rectangle(C.W / 2, C.H / 2, C.W, C.H, 0xc8e7ff, 0.12).setDepth(18).setScrollFactor(0);
+    this.tweens.add({ targets: bolt, alpha: 0, duration: 520, onComplete: () => bolt.destroy() });
+    this.tweens.add({ targets: flash, alpha: 0, duration: 210, onComplete: () => flash.destroy() });
   }
 
   /** Trees, shops, lampposts and chai stalls, scattered along both verges. */
@@ -985,12 +1039,12 @@ export class Game extends Phaser.Scene {
     if (time >= this.nextObstacleAt) {
       this.spawnObstacle();
       const t = Math.min(1, this.elapsed / 1000 / C.SPAWN_RAMP_S);
-      const pace = this.shift.traffic === 'calm' ? 1.35 : this.shift.traffic === 'rush' ? 0.78 : 1;
+      const pace = this.shift.traffic === 'calm' ? 1.35 : this.shift.traffic === 'rush' ? 0.78 : this.shift.traffic === 'monsoon' ? 0.88 : 1;
       this.nextObstacleAt = time + Phaser.Math.Linear(C.SPAWN_START, C.SPAWN_MIN, t) * pace;
     }
     if (time >= this.nextPaxAt) {
       this.spawnPassenger();
-      const pace = this.shift.traffic === 'rush' ? 0.82 : 1;
+      const pace = this.shift.traffic === 'rush' || this.shift.traffic === 'monsoon' ? 0.88 : 1;
       this.nextPaxAt = time + Phaser.Math.Between(C.PAX_SPAWN_MIN, C.PAX_SPAWN_MAX) * pace;
     }
   }
@@ -1000,7 +1054,8 @@ export class Game extends Phaser.Scene {
     const entries = (Object.entries(C.OBSTACLES) as [Kind, { weight: number; unlockKm: number }][])
       .filter(([kind, v]) => km >= v.unlockKm && !(this.shift.traffic === 'calm' && LOOK[kind].crash))
       .map(([kind, v]) => {
-        const factor = this.shift.traffic === 'monsoon' && kind === 'water' ? 4
+        const factor = this.shift.traffic === 'monsoon' && kind === 'water' ? 6
+          : this.shift.traffic === 'monsoon' && ['bus', 'scooter'].includes(kind) ? 1.6
           : this.shift.traffic === 'rush' && ['bus', 'scooter', 'truck'].includes(kind) ? 2
             : this.shift.traffic === 'wedding' && kind === 'baraat' ? 5 : 1;
         return [kind, v.weight * factor] as [Kind, number];

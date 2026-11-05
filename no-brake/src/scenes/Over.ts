@@ -4,7 +4,7 @@ import type { RunStats } from './Game';
 import { recordRun, summary } from '../stats';
 import { PIXEL } from '../fonts';
 import { track, setSuper } from '../analytics';
-import { settleShift, SHIFTS } from '../shifts';
+import { getCareerTrail, settleShift, SHIFTS } from '../shifts';
 
 const BEST_KEY = 'auto_best_fare';
 
@@ -18,13 +18,18 @@ export class Over extends Phaser.Scene {
     const fare = Math.floor(stats.fare);
     const km = (stats.distPx / 10000).toFixed(2);
     const lifetime = recordRun(stats);
-    const progress = settleShift(stats.shift.id, fare, stats.shift.completed);
+    const settlement = settleShift(stats.shift.id, fare, stats.shift.completed, stats.dropped);
+    const { progress, trailRewards } = settlement;
+    const career = getCareerTrail(progress);
     setSuper({
       runs_before: lifetime.runs,
       best_fare: lifetime.bestFare,
       shift_cash: progress.cash,
       shifts_done: progress.completed.length,
+      career_deliveries: progress.deliveries,
+      career_rank: career.rank,
     });
+    for (const milestone of trailRewards) track('trail_milestone', { name: milestone.name, reward: milestone.reward });
 
     let prevBest = 0;
     try {
@@ -75,7 +80,13 @@ export class Over extends Phaser.Scene {
 
     const payout = completed ? `+ ₹${shift.reward} SHIFT BONUS` : 'Finish the job to earn the shift bonus';
     this.add.text(W / 2, 274, payout, { ...mono, fontSize: '11px', color: completed ? '#2ecc71' : '#7f8c8d' }).setOrigin(0.5);
-    this.add.text(W / 2, 302, `WALLET  ₹${progress.cash}${isBest ? '  ·  NEW BEST' : ''}`, {
+    const trailLine = trailRewards.length
+      ? `TRAIL UNLOCKED · ${trailRewards.map((m) => `${m.name} +₹${m.reward}`).join(' · ')}`
+      : career.next
+        ? `CAREER TRAIL · ${progress.deliveries}/${career.next.target} drops to ${career.next.name}`
+        : `CAREER TRAIL COMPLETE · ${career.rank}`;
+    this.add.text(W / 2, 293, trailLine, { ...mono, fontSize: '9px', color: trailRewards.length ? '#2ecc71' : '#9a9a9a' }).setOrigin(0.5);
+    this.add.text(W / 2, 316, `WALLET  ₹${progress.cash}${isBest ? '  ·  NEW BEST' : ''}`, {
       ...mono, fontSize: '12px', color: '#f5c518',
     }).setOrigin(0.5);
 
@@ -85,12 +96,13 @@ export class Over extends Phaser.Scene {
       `${km} km driven  ·  ${Math.round(stats.seconds)} sec`,
     ];
     lines.forEach((line, i) => {
-      this.add.text(W / 2, 340 + i * 22, line, { ...mono, fontSize: '11px', color: '#bdbdbd' }).setOrigin(0.5);
+      this.add.text(W / 2, 350 + i * 22, line, { ...mono, fontSize: '11px', color: '#bdbdbd' }).setOrigin(0.5);
     });
 
     const shareText = [
       `🛺 Riksha · Shift ${shift.id}: ${shift.name}`,
       `${completed ? 'Job complete' : `${stats.dropped}/${shift.drops} drop-offs`} · ₹${fare} fare · ${km} km`,
+      `Career rank: ${career.rank}`,
       'Can you finish the shift?',
     ].join('\n');
     const shareBtn = this.button(W / 2, 432, 'SHARE SHIFT', 0xf4d03f, '#111', 190);

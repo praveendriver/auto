@@ -38,6 +38,7 @@ export type EventName =
   | 'rider_fell'
   | 'route_done'
   | 'shift_complete'
+  | 'trail_milestone'
   | 'share_click'
   | 'stats_send'
   | 'sound_toggle'

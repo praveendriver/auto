@@ -6,7 +6,7 @@ import { readStats } from '../stats';
 import { pickRoute } from '../routes';
 import { DISPLAY, PIXEL, SANS } from '../fonts';
 import { track, setSuper } from '../analytics';
-import { getShift, readShiftProgress, SHIFTS } from '../shifts';
+import { getCareerTrail, getShift, readShiftProgress, SHIFTS } from '../shifts';
 
 /**
  * Start screen, and the only tutorial the game gets.
@@ -32,6 +32,7 @@ export class Title extends Phaser.Scene {
     const stats = readStats();
     const campaign = readShiftProgress();
     const shift = getShift(campaign.unlocked);
+    const career = getCareerTrail(campaign);
     setSuper({
       runs_before: stats.runs,
       best_fare: stats.bestFare,
@@ -39,6 +40,8 @@ export class Title extends Phaser.Scene {
       shift_cash: campaign.cash,
       shifts_done: campaign.completed.length,
       unlocked_shift: campaign.unlocked,
+      career_deliveries: campaign.deliveries,
+      career_rank: career.rank,
     });
     track('app_open', { route: route.slug, returning: stats.runs > 0, unlocked_shift: campaign.unlocked });
 
@@ -110,10 +113,14 @@ export class Title extends Phaser.Scene {
     btn.add(this.add.text(0, 0, startLabel, { ...pixel, fontSize: '15px', color: '#1c1c1e' }).setOrigin(0.5));
     this.tweens.add({ targets: btn, scale: 1.045, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    const finished = campaign.completed.length;
-    const footer = `WALLET  ₹${campaign.cash}   ·   ${finished}/${SHIFTS.length} SHIFTS DONE`;
     this.add
-      .text(W / 2, H - 16, footer, { ...pixel, fontSize: '10px', color: '#6f6f6f' })
+      .text(W / 2, H - 34, `WALLET  ₹${campaign.cash}   ·   ${career.rank.toUpperCase()}`, { ...pixel, fontSize: '9px', color: '#c7c4ba' })
+      .setOrigin(0.5);
+    const trailLine = career.next
+      ? `CAREER TRAIL  ${campaign.deliveries}/${career.next.target} DROPS · ${career.next.name.toUpperCase()}`
+      : `CAREER TRAIL COMPLETE  ·  ${campaign.completed.length}/${SHIFTS.length} SHIFTS`;
+    this.add
+      .text(W / 2, H - 16, trailLine, { ...pixel, fontSize: '8px', color: '#6f6f6f' })
       .setOrigin(0.5);
 
     /* ---------------------------------------------------------- input */

@@ -144,12 +144,16 @@ traffic. That's what full is supposed to feel like.
 1. **First Fare:** one drop-off, calm traffic to learn the pickup and stop.
 2. **Two Stops:** two drop-offs in regular traffic.
 3. **Monsoon Meter:** two drop-offs with more puddles.
-4. **Rush Hour:** three drop-offs, with buses and scooters appearing more often.
-5. **Wedding Detour:** three drop-offs through more frequent baraats.
+4. **Night Rush:** three drop-offs under headlights, with faster traffic.
+5. **Wedding Detour:** three night drop-offs through more frequent baraats.
 
 The objective stays visible in the HUD. Each completed shift unlocks the next
 and adds a bonus to the wallet. Completed shifts and wallet balance are saved
 locally; after the fifth shift, players can replay it.
+
+Passenger deliveries also advance a persistent **Career Trail**: Namma Driver
+(5 deliveries), Meter Master (12), then City Legend (25). Each milestone pays
+bonus cash, including deliveries made on failed shifts.
 
 ## Real roads
 
@@ -283,6 +287,6 @@ try is a longer `DROP_MIN_PX` so they don't stack up.
 
 ## Not yet
 
-Earlier-shift replay selection, more roads, unlockable auto decorations, and a
-daily featured shift are possible next steps. The five-shift campaign is the
-first test of whether distinct jobs make players want to continue.
+Earlier-shift replay selection, a garage for auto-to-cab upgrades, more roads,
+and a daily featured shift are possible next steps. The campaign and career
+trail are the first test of whether varied jobs make players want to continue.
