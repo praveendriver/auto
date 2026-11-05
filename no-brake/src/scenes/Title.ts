@@ -57,10 +57,10 @@ export class Title extends Phaser.Scene {
       .text(W / 2, 58, 'RIKSHA', { fontFamily: DISPLAY, fontSize: '50px' })
       .setOrigin(0.5);
     this.add
-      .text(W / 2, 96, 'five quick shifts · earn your fare', { ...pixel, fontSize: '12px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })
+      .text(W / 2, 90, 'five quick shifts · earn your fare', { ...pixel, fontSize: '12px', color: '#e9e6dc', stroke: '#000000', strokeThickness: 3 })
       .setOrigin(0.5);
     this.add
-      .text(W / 2, 119, `${route.title.toUpperCase()} · ${route.city.toUpperCase()}`, { ...pixel, fontSize: '9px', color: '#f5c518' })
+      .text(W / 2, 106, `${route.title.toUpperCase()} · ${route.city.toUpperCase()}`, { ...pixel, fontSize: '8px', color: '#f5c518' })
       .setOrigin(0.5);
 
     /* ------------------------------------------------- the hero sprite */
